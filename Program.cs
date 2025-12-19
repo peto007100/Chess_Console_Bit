@@ -20,6 +20,7 @@ namespace EngineOfChess {
         static void Main(string[] args) {
 
             S_BOARD board = new();
+            InitFilesRanksBrd();
             InitSq120To64();
             InitBitMasks();
             InitHashKeys();
@@ -93,6 +94,47 @@ namespace EngineOfChess {
             }
         }
 
+        static void InitFilesRanksBrd() {
+            int index = 0;
+            int file = (int)File.FILE_A;
+            int rank = (int)Rank.RANK_1;
+            int Sq = (int)BoardSquare.A1;
+            int Sq64 = 0;
+
+            for (index = 0; index < Global.BRD_SQ_NUM; index++) {
+                Global.FilesBrd[index] = (int)BoardSquare.OFFBOARD;
+                Global.RanksBrd[index] = (int)BoardSquare.OFFBOARD;
+            }
+
+            for (index = 0; index < 64; index++) {
+                Global.Sq64ToSq120[index] = 120;
+            }
+
+            for (rank = (int)Rank.RANK_1; rank <= (int)Rank.RANK_8; rank++) {
+
+                for (file = (int)File.FILE_A; file <= (int)File.FILE_H; file++) {
+
+                    Sq = Global.FR2SQ(file, rank);
+
+                    Global.FilesBrd[Sq] = file;
+                    Global.RanksBrd[Sq] = rank;
+
+                    Sq64++;
+                }
+            }
+
+            /*
+            for (index = 0; index < Global.BRD_SQ_NUM; ++index) {
+                if (index%10==0 && index != 0) { Console.WriteLine(); }
+                Console.Write(Global.FilesBrd[index] + " ");
+            }
+            for (index = 0; index < Global.BRD_SQ_NUM; ++index) {
+                if (index % 10 == 0 && index != 0) { Console.WriteLine(); }
+                Console.Write(Global.RanksBrd[index] + " ");
+            }
+            */
+        }
+
         unsafe public static ulong GeneratePosKey(in S_BOARD pos) {
             int sq = 0;
             ulong finalKey = 0;
@@ -122,6 +164,35 @@ namespace EngineOfChess {
 
             return finalKey;
         }
+        static void UpdateListsMaterial(ref S_BOARD pos) {
+            int piece;
+            int sq;
+            int colour;
+
+            for (int index = 0; index < Global.BRD_SQ_NUM; index++) {
+                sq = index;
+                piece = pos.pieces[index];
+                //BoardSquare.OFFBOARD
+                if (piece != (int)BoardSquare.NO_SQ && piece != (int)Pieces.EMPTY) {
+                    colour = Global.PieceCol[piece];
+
+                    if (Global.PieceBig[piece] == 1) { pos.bigPce[colour]++; }
+                    if (Global.PieceMin[piece] == 1) { pos.minPce[colour]++; }
+                    if (Global.PieceMaj[piece] == 1) { pos.majPce[colour]++; }
+
+                    pos.material[colour] += Global.PieceVal[piece];
+                    pos.pList[piece][pos.pceNum[piece]] = sq;
+                    pos.pceNum[piece]++;
+
+                    if (piece == (int)Pieces.wK) {
+                        pos.kingSq[(int)Color.WHITE] = sq;
+                    }
+                    if (piece == (int)Pieces.bK) {
+                        pos.kingSq[(int)Color.BLACK] = sq;
+                    }
+                }
+            }
+                }
         public static int ParseFen(string fen, ref S_BOARD pos) {
             if (fen == null) {
                 Console.WriteLine("FEN nula!");
@@ -425,6 +496,7 @@ namespace EngineOfChess {
         public int[] bigPce = new int[3];
         public int[] majPce = new int[3];
         public int[] minPce = new int[3];
+        public int[] material = new int[2];
 
         S_UNDO[] history = new S_UNDO[Global.MAXGAMEMOVE];
 
@@ -464,10 +536,20 @@ namespace EngineOfChess {
         public static ulong SideKey;
         public static ulong[] CastleKeys = new ulong[16];
 
+        public static int[] FilesBrd = new int[BRD_SQ_NUM];
+        public static int[] RanksBrd = new int[BRD_SQ_NUM];
+
         public static string PceChar = ",PNBRQKpnbrqk";
         public static string SideChar = "wb-";
         public static string RankChar = "12345678";
         public static string FileChar = "abcdefgh";
+
+        public static int[] PieceBig = new int[] {0, 0, 1, 1, 1, 1, 1, 0, 1, 1,1,1,1 };
+        public static int[] PieceMaj = new int[] { 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 1, 1, 1 };
+        public static int[] PieceMin = new int[] { 0, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0 };
+        public static int[] PieceVal = new int[] { 0, 100, 325, 325, 550, 1000, 50000, 100, 325, 325, 550, 1000, 50000 };
+        public static int[] PieceCol = new int[] { (int)Color.BOTH, (int)Color.WHITE, (int)Color.WHITE, (int)Color.WHITE, (int)Color.WHITE, (int)Color.WHITE, (int)Color.WHITE, (int)Color.BLACK, (int)Color.BLACK, (int)Color.BLACK, (int)Color.BLACK,
+            (int)Color.BLACK, (int)Color.BLACK };
 
         public static int FR2SQ(int f, int r) {
 
